@@ -1,0 +1,39 @@
+db:
+  image: mysql:5.7
+  volumes:
+    - ./config/mysql:/etc/mysql/conf.d
+    - ./install/mysql:/docker-entrypoint-initdb.d
+  restart: always
+  ports:
+    - "3306"
+  environment:
+    MYSQL_ROOT_PASSWORD: root
+    MYSQL_DATABASE: copycode_db
+    MYSQL_USER: root
+    MYSQL_PASSWORD: root
+
+node:
+  image: node:boron
+  working_dir: /home/app
+  volumes:
+    - ./app:/home/app
+  ports:
+    - "8000:8000"
+  links:
+    - "db:database"
+  command: bash -c "npm install && npm start"
+
+web:
+  image: richarvey/nginx-php-fpm
+  working_dir: /home/www
+  ports:
+    - "8080:80"
+  volumes:
+    - ./html:/home/www
+    - ./scripts:/home/scripts
+    - ./config/nginx/host.conf:/etc/nginx/sites-available/default.conf
+    - ./config/cron/root:/var/spool/cron/crontabs/root
+  links:
+      - "db:database"
+      - "node:node"
+  command: php artisan migrate --seed # Remove comment after first start and create migration
